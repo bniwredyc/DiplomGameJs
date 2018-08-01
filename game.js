@@ -200,78 +200,172 @@ class Level  {
 
 
 class LevelParser {
-  constructor(obj) {
-
+  constructor(itemsField) {
+    this.itemsField = itemsField
   }
-  actorFromSymbol(str) {
 
+  actorFromSymbol(item) {
+    if (str(item) in this.itemsField) {
+      return this.itemsField[item]
+    }
+    return undefined
   }
-  createGrid()  {
 
+  obstacleFromSymbol(item)  {
+    let obstacles = {'x': 'wall', '!': 'lava'};
+    return obstacles[item];
   }
-  createActors()  {
 
+  createGrid(field)  {
+    let grid = []
+
+    for (let line of field) {
+      let result = []
+
+      [...line].forEach(function(element) {
+        result.push(this.obstacleFromSymbol(element))
+      })
+
+      grid.push(result)
+    }
+    return grid
   }
-  parse(arr) {
 
+  createActors(movieField)  {
+    let items = []
+
+    movieField.forEach(function(itemY, y) {
+      [...itemY].forEach(function(itemX, x) {
+        let result
+        if (typeof this.actorFromSymbol(itemX) === 'function')  {
+          result = new Constructor(new Vector(x, y))
+        }
+        if (result instanceof Actor)  {
+          items.push(result)
+        }
+      })
+    })
+    return items
+  }
+
+  parse(field) {
+    let grid = this.createGrid(field)
+    let actors = this.createActors(field)
+    let level = new Level(grid, actors)
+    return level
   }
 }
 
 
-class Fireball extends Actor{
-  constructor(pos, speed){
-    this.type = 'fireball'
-    this.size = vector
+class Fireball extends Actor {
+  constructor(pos = new Vector(0, 0), speed = new Vector(0, 0)){
+    super(pos, undefined, speed)
+  }
+
+  get type()  {
+    return 'fireball'
+  }
+
+  getNextPosition(time = 1) {
+    return this.pos.plus(this.speed.times(time))
   }
 
   handleObstacle()  {
-
+    this.speed = this.speed.times(-1)
   }
-  act(int, lvl) {
+  act(time, lvl) {
+    let nextPosition = this.getNextPosition(time)
+    if (lvl.obstacleAt(nextPosition, this.size))  {
+      this.handleObstacle()
+    } else {
+      this.pos = nextPosition
+    }
+  }
+}
 
+
+class HorizontalFireball extends Fireball {
+  constructor(pos) {
+    super(pos, new Vector(0, 2))
   }
 }
 
 
-class HorizontalFireball  {
-  constructor() {
-
+class VerticalFireball extends Fireball {
+  constructor(pos) {
+    super(pos, new Vector(0, 2))
   }
 }
 
-class FireRain  {
-  constructor() {
+class FireRain extends Fireball {
+  constructor(pos) {
+    super(pos, new Vector(0, 3))
+    this.starPosition = pos
+  }
 
+  handleObstacle()  {
+    this.pos = this.starPosition
   }
 }
 
 
 class Coin extends Actor {
-  constructor(vector) {
-    this.type = "coin"
-    springSpeed = 8
-    springDist = 0.07
-    spring = rand0m
+  constructor(pos) {
+    super(pos, new Vector(0.6, 0.6))
+    this.pos = this.pos.plus(new Vector(0.2, 0.1))
+    this.startPos = Object.assign(this.pos)
+    this.spring = Math.random() * (Math.PI * 2)
+    this.springDist = 0.07
+    this.springSpeed = 8
   }
 
-  updateSpring(time, int = 0)  {
+  get type()  {
+    return 'coin'
+  }
 
+  updateSpring(time = 1)  {
+    this.spring += this.springSpeed * time
   }
 
   getSpringVector() {
-
+    return new Vector(0, (Math.sin(this.spring) * this.springDist))
   }
 
-  getNextPosition(time, int = 1) {
-
+  getNextPosition(time = 1) {
+    this.updateSpring(time)
+    return this.startPos.plus(this.getSpringVector());
   }
   act(time) {
-
+    this.pos = this.getNextPosition(time)
   }
 }
 
-class Player  {
-  constructor(vector) {
-    this.type = "player"
+class Player extends Actor  {
+  constructor(pos) {
+    super(pos, new Vector(0.8, 1.5))
+    this.pos = this.pos.plus(new Vector(0, -0.5))
+  }
+
+  get type()  {
+    return 'player'
   }
 }
+
+
+const actorDict = {
+    '@': Player,
+    'v': FireRain,
+    'o': Coin,
+    '=': HorizontalFireball,
+    '|': VerticalFireball
+}
+
+const parser = new LevelParser(actorDict)
+
+
+const level = parser.parse(schema);
+runLevel(level, DOMDisplay);
+
+/*loadLevels()
+      .then((res) => {runGame(JSON.parse(res), parser, DOMDisplay)
+      .then(() => alert('Вы выиграли!'))})*/
