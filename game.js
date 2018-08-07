@@ -2,26 +2,20 @@
 
 
 class Vector {
-  constructor(x = 0, y = 0) {
-    this.x = x
-    this.y = y
+    constructor(x = 0, y = 0) {
+      this.x = x
+      this.y = y
     }
 
     plus(vector) {
-      try {
         if (!(vector instanceof Vector)) {
-          throw `Можно прибавлять к вектору только объект типа Vector`
+          throw new Error(`Можно прибавлять к вектору только объект типа Vector`)
         }
 
         let plus_x = this.x + vector.x
         let plus_y = this.y + vector.y
 
         return new Vector(plus_x, plus_y)
-
-        } catch(err) {
-          console.log(`Ошибка ${err}`)
-        }
-
     }
 
     times(time)  {
@@ -36,18 +30,13 @@ class Vector {
 
 class Actor {
     constructor(pos = new Vector(), size = new Vector(1 , 1), speed = new Vector()) {
-      try {
         if (!((pos instanceof Vector) || (size instanceof Vector) || (speed instanceof Vector)))  {
-          throw `передаваемые парметры должны быть типа Vector`
+          throw new Error(`передаваемые парметры должны быть типа Vector`)
         }
 
         this.pos = pos
         this.size = size
         this.speed = speed
-
-      } catch (err) {
-        console.log(`Ошибка ${err}`)
-      }
     }
 
     act()  {}
@@ -64,23 +53,19 @@ class Actor {
       return this.pos.x + this.size.x
     }
 
-    get bottom()  {
+    get top()  {
       return this.pos.y
     }
 
-    get top() {
+    get bottom() {
       return this.pos.y + this.size.y
     }
 
     isIntersect(someActor) {
-      try {
-        if (!(someActor instanceof Actor)) {
-          throw `Можно передать только объект типа Vector`
-        }
-        else if(someActor === undefined) {
-          throw 'Необходимо указать аргумент типа Vector'
-        }
-        else if(this === someActor) {
+        if (!someActor || !(someActor instanceof Actor)) {
+          throw new Error(`Можно передать только объект типа Vector`)
+
+        } else if(this === someActor) {
           return false
         }
         else if(this.left < someActor.right &&
@@ -90,11 +75,7 @@ class Actor {
           return true
         }
         return false
-
-      } catch (err) {
-        console.log(`Ошибка ${err}`)
-      }
-  }
+    }
 }
 
 
@@ -108,7 +89,7 @@ class Level  {
         this.width = this.grid.sort(function (i, j) {
           return j.length - i.length
         })[0].length
-      }else{
+      } else {
         this.width = 1
       }
     }else{
@@ -165,8 +146,6 @@ class Level  {
       for (let x = leftBorder; x < rightBorder; x++) {
         if (this.grid[y][x]) {
           return this.grid[y][x]
-        } else {
-          return undefined
         }
       }
     }
@@ -205,10 +184,10 @@ class LevelParser {
   }
 
   actorFromSymbol(item) {
-    if (str(item) in this.itemsField) {
-      return this.itemsField[item]
+    if (typeof item !== 'string' || !this.actorsLibrary) {
+      return this.itemsField[item];
     }
-    return undefined
+    return undefined;
   }
 
   obstacleFromSymbol(item)  {
@@ -217,42 +196,47 @@ class LevelParser {
   }
 
   createGrid(field)  {
-    let grid = []
+    if (field instanceof Actor) {
+      return;
+    }
+
+    let grid = [];
 
     for (let line of field) {
-      let result = []
-
-      [...line].forEach(function(element) {
-        result.push(this.obstacleFromSymbol(element))
-      })
-
-      grid.push(result)
+      let result = [];
+      [...line].forEach((element) => result.push(this.obstacleFromSymbol(element)));
+      grid.push(result);
     }
-    return grid
+    return grid;
   }
 
   createActors(movieField)  {
-    let items = []
+    if (!Array.isArray(movieField)) {
+      return;
+    }
+    let items = [];
 
-    movieField.forEach(function(itemY, y) {
-      [...itemY].forEach(function(itemX, x) {
-        let result
-        if (typeof this.actorFromSymbol(itemX) === 'function')  {
-          result = new Constructor(new Vector(x, y))
+    movieField.forEach((itemY, y) => {
+      [...itemY].forEach((itemX, x) => {
+        let Constructor = this.actorFromSymbol(itemX)
+        let result;
+        if (typeof Constructor === 'function')  {
+          result = new Constructor(new Vector(x, y));
         }
         if (result instanceof Actor)  {
-          items.push(result)
+          items.push(result);
         }
-      })
-    })
-    return items
+      });
+    });
+    return items;
   }
 
+
   parse(field) {
-    let grid = this.createGrid(field)
-    let actors = this.createActors(field)
-    let level = new Level(grid, actors)
-    return level
+    let grid = this.createGrid(field);
+    let actors = this.createActors(field);
+    let level = new Level(grid, actors);
+    return level;
   }
 }
 
@@ -273,6 +257,7 @@ class Fireball extends Actor {
   handleObstacle()  {
     this.speed = this.speed.times(-1)
   }
+
   act(time, lvl) {
     let nextPosition = this.getNextPosition(time)
     if (lvl.obstacleAt(nextPosition, this.size))  {
@@ -335,6 +320,7 @@ class Coin extends Actor {
     this.updateSpring(time)
     return this.startPos.plus(this.getSpringVector());
   }
+
   act(time) {
     this.pos = this.getNextPosition(time)
   }
@@ -363,9 +349,6 @@ const actorDict = {
 const parser = new LevelParser(actorDict)
 
 
-const level = parser.parse(schema);
-runLevel(level, DOMDisplay);
-
-/*loadLevels()
+loadLevels()
       .then((res) => {runGame(JSON.parse(res), parser, DOMDisplay)
-      .then(() => alert('Вы выиграли!'))})*/
+      .then(() => alert('Вы выиграли!'))})
